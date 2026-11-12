@@ -351,8 +351,6 @@
             </div>
             <div style="background: rgba(212, 175, 55, 0.1); padding: 12px; border-radius: 4px;">
               <p style="font-size: 0.9rem; font-weight: 600; margin-bottom: 6px;">Devine ton Secret Santa, <span id="guessReceiverSpan">...</span> !</p>
-              <button class="btn-outline" onclick="revealTurnSantaIdentity()" id="btnRevealSantaIdent">Révéler</button>
-              <div id="santaIdentityResult" class="hidden" style="margin-top: 8px; font-weight: 700; color: var(--ruby-red);"></div>
             </div>
           </div>
           <div class="paper-card" style="width: 100%;">
@@ -698,20 +696,11 @@
       document.getElementById('turnGiverName').innerText = giver.name;
       document.getElementById('turnReceiverName').innerText = receiver.name;
       document.getElementById('guessReceiverSpan').innerText = receiver.name;
-      document.getElementById('santaIdentityResult').classList.add('hidden');
       document.getElementById('btnRevealSantaIdent').classList.remove('hidden');
       document.getElementById('turnRevealCard').classList.remove('hidden');
       state.currentTurnIndex++;
       await saveState();
       renderPartyTurnsUI();
-    }
-
-    function revealTurnSantaIdentity() {
-      const giver = state.participants.find(p => p.id === state.partyTurns[state.currentTurnIndex - 1]);
-      const res = document.getElementById('santaIdentityResult');
-      res.innerHTML = `🎁 Le Secret Santa était : <u>${escapeHtml(giver.name)}</u>`;
-      res.classList.remove('hidden');
-      document.getElementById('btnRevealSantaIdent').classList.add('hidden');
     }
 
     function renderPartyTurnsUI() {
