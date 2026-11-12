@@ -5,12 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>L'Atelier Secret Santa</title>
   
-  <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
   
-  <!-- Lucide Icons & Confetti -->
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
 
@@ -371,7 +369,6 @@
   </div>
 
   <script>
-    // --- STATE MANAGEMENT AVEC GIST GITHUB ---
     let state = {
       config: { eventName: "Secret Santa 2026", budget: "20€ maximum", adminPin: "0000" },
       participants: [],
@@ -382,9 +379,6 @@
 
     let isAdminUnlocked = false;
 
-    // URL Raw permanente du Gist (sans l'ID de commit figé pour charger toujours la dernière version)
-    const GIST_RAW_URL = "https://gist.githubusercontent.com/DAHORD-08/c44d62f1573c6348c134590e1cce2252/raw/secretsanta.json";
-
     window.onload = async function() {
       await loadState();
       initSnow();
@@ -392,34 +386,39 @@
       updateUI();
     };
 
-    async function saveState() {
-      // Sauvegarde locale instantanée pour réagir au quart de tour sur ton PC
-      localStorage.setItem('secret_santa_craft_state', JSON.stringify(state));
-    }
-
     async function loadState() {
-      // On charge d'abord le cache local pour ne jamais perdre tes saisies en cours
-      const saved = localStorage.getItem('secret_santa_craft_state');
-      if (saved) {
-        try { state = JSON.parse(saved); } catch(e) {}
-      }
-
-      // Ensuite on essaie de voir si le Gist a des données plus fraîches (uniquement s'il n'est pas vide)
       try {
-        const response = await fetch(GIST_RAW_URL + "?t=" + Date.now());
+        const response = await fetch('./secretsanta.json?t=' + Date.now());
         if (response.ok) {
           const data = await response.json();
-          if (data && data.participants && data.participants.length > 0) {
+          if (data && typeof data === 'object' && data.config) {
             state = data;
-            saveState();
+            return;
           }
         }
       } catch(e) {
-        console.error("Mode hors-ligne / Gist inaccessible, utilisation du local", e);
+        console.error("Impossible de charger le JSON local", e);
+      }
+      
+      const saved = localStorage.getItem('secret_santa_fallback_state');
+      if (saved) {
+        try { state = JSON.parse(saved); } catch(e) {}
       }
     }
 
-    // --- NAVIGATION ---
+    function saveState() {
+      localStorage.setItem('secret_santa_fallback_state', JSON.stringify(state));
+      
+      // Téléchargement automatique d'un nouveau JSON mis à jour pour que tu puisses le replacer sur ton repo si besoin
+      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
+      const downloadAnchor = document.createElement('a');
+      downloadAnchor.setAttribute("href", dataStr);
+      downloadAnchor.setAttribute("download", "secretsanta.json");
+      document.body.appendChild(downloadAnchor);
+      downloadAnchor.click();
+      downloadAnchor.remove();
+    }
+
     function switchMainTab(tabId) {
       document.getElementById('part1Section').classList.add('hidden');
       document.getElementById('part2Section').classList.add('hidden');
@@ -443,7 +442,6 @@
       }
     }
 
-    // --- ADMIN ---
     function unlockAdmin() {
       const input = document.getElementById('adminPinInput').value;
       if (input === state.config.adminPin) {
@@ -474,7 +472,7 @@
       if (newPin && newPin.length >= 4) state.config.adminPin = newPin;
 
       saveState();
-      alert("Paramètres enregistrés !");
+      alert("Paramètres enregistrés ! Un fichier secretsanta.json s'est téléchargé : remplace-le dans ton dossier de projet.");
       updateUI();
     }
 
@@ -551,7 +549,7 @@
       state.partyTurns = [];
       saveState();
       confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
-      alert("Tirage effectué avec succès !");
+      alert("Tirage effectué ! Un fichier secretsanta.json s'est téléchargé. Pense à le committer sur ton repo.");
       renderAdminDashboard();
     }
 
@@ -569,7 +567,6 @@
       }
     }
 
-    // --- SALON / TIRAGE ---
     function populateUserDropdown() {
       const select = document.getElementById('userSelect');
       select.innerHTML = '<option value="">-- Mon Prénom --</option>' + 
@@ -605,7 +602,7 @@
       if (!user) return;
       user.wishlist = [document.getElementById('wish1').value.trim(), document.getElementById('wish2').value.trim(), document.getElementById('wish3').value.trim()].filter(Boolean);
       saveState();
-      alert("Souhaits enregistrés !");
+      alert("Souhaits enregistrés ! Un fichier secretsanta.json s'est téléchargé pour la mise à jour.");
     }
 
     function closeUserCard() {
@@ -613,7 +610,6 @@
       document.getElementById('userPinInput').value = '';
     }
 
-    // --- SOIRÉE J ---
     function initPartyTurns() {
       if (Object.keys(state.assignments).length === 0) return;
       if (!state.partyTurns || state.partyTurns.length === 0) {
