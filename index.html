@@ -209,7 +209,7 @@
       <nav style="display: flex; justify-content: center; gap: 10px; border-bottom: 1px solid rgba(212, 175, 55, 0.2); width: 100%; margin-top: 15px; flex-wrap: wrap;">
         <button id="navPart2" class="nav-tab active" onclick="switchMainTab('part2')"><i data-lucide="mail"></i> Le Salon (Mon Tirage)</button>
         <button id="navPart3" class="nav-tab" onclick="switchMainTab('part3')"><i data-lucide="gift"></i> La Soirée J (Distribution)</button>
-        <button id="navPart1" class="nav-tab" onclick="switchMainTab('part1')" style="margin-left: auto; color: rgba(246, 240, 228, 0.4);"><i data-lucide="lock"></i> Espace Organisateur</button>
+        <button id="navPart1" class="nav-tab" onclick="switchMainTab('part1')" style="color: rgba(246, 240, 228, 0.4);"><i data-lucide="lock"></i> Espace Organisateur</button>
       </nav>
     </header>
 
@@ -348,9 +348,6 @@
               <h3 id="turnGiverName" class="font-title" style="font-size: 2rem; color: var(--ruby-red); margin: 4px 0;">---</h3>
               <p style="font-size: 1rem; color: #555;">pour offrir à :</p>
               <h3 id="turnReceiverName" class="font-title" style="font-size: 2rem; color: var(--gold-deep); margin: 4px 0;">---</h3>
-            </div>
-            <div style="background: rgba(212, 175, 55, 0.1); padding: 12px; border-radius: 4px;">
-              <p style="font-size: 0.9rem; font-weight: 600; margin-bottom: 6px;">Devine ton Secret Santa, <span id="guessReceiverSpan">...</span> !</p>
             </div>
           </div>
           <div class="paper-card" style="width: 100%;">
@@ -694,9 +691,7 @@
       const receiver = state.participants.find(p => p.id === state.assignments[giver.id]);
       document.getElementById('turnStepNumber').innerText = `Tour #${state.currentTurnIndex + 1}`;
       document.getElementById('turnGiverName').innerText = giver.name;
-      document.getElementById('turnReceiverName').innerText = receiver.name;
-      document.getElementById('guessReceiverSpan').innerText = receiver.name;
-      document.getElementById('btnRevealSantaIdent').classList.remove('hidden');
+      document.getElementById('turnReceiverName').innerText = receiver.name;;
       document.getElementById('turnRevealCard').classList.remove('hidden');
       state.currentTurnIndex++;
       await saveState();
