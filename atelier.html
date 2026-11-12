@@ -1,0 +1,709 @@
+<!DOCTYPE html>
+<html lang="fr" class="h-full">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>L'Atelier Secret Santa</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;700;900&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,400&family=Caveat:wght@600;700&display=swap" rel="stylesheet">
+  
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- SDK Client Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+
+  <style>
+    :root {
+      --bg-dark: #0b1a13;
+      --bg-pine: #142e22;
+      --paper-cream: #f6f0e4;
+      --paper-shadow: #e2d7c3;
+      --gold-brass: #d4af37;
+      --gold-deep: #aa820a;
+      --ruby-red: #8b1e1e;
+      --ruby-dark: #5c1010;
+      --text-dark: #2c221e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background-color: var(--bg-dark);
+      background-image: 
+        radial-gradient(circle at 50% 20%, rgba(20, 46, 34, 0.8) 0%, rgba(11, 26, 19, 0.98) 70%),
+        radial-gradient(circle at 80% 80%, rgba(139, 30, 30, 0.15) 0%, transparent 50%);
+      color: var(--paper-cream);
+      font-family: 'Cormorant Garamond', Georgia, serif;
+      font-size: 18px;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow-x: hidden;
+      position: relative;
+    }
+
+    h1, h2, h3, h4, .font-title {
+      font-family: 'Cinzel', serif;
+      letter-spacing: 0.04em;
+    }
+
+    .paper-card {
+      background: var(--paper-cream);
+      color: var(--text-dark);
+      border-radius: 4px;
+      padding: 24px;
+      position: relative;
+      box-shadow: 
+        0 10px 30px rgba(0,0,0,0.5),
+        0 2px 6px rgba(0,0,0,0.3),
+        inset 0 0 40px rgba(212, 175, 55, 0.15);
+      border: 1px solid var(--paper-shadow);
+    }
+
+    .paper-card::before {
+      content: '';
+      position: absolute;
+      inset: 6px;
+      border: 1px dashed rgba(170, 130, 10, 0.4);
+      pointer-events: none;
+      border-radius: 2px;
+    }
+
+    .ribbon-tag {
+      background: linear-gradient(135deg, var(--ruby-red), var(--ruby-dark));
+      color: var(--paper-cream);
+      padding: 4px 14px;
+      font-family: 'Cinzel', serif;
+      font-size: 0.75rem;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.1em;
+      border-radius: 2px;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.3);
+      display: inline-block;
+    }
+
+    .wax-seal {
+      width: 70px;
+      height: 70px;
+      background: radial-gradient(circle at 30% 30%, #b82828, var(--ruby-red) 60%, var(--ruby-dark));
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: var(--gold-brass);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.5), inset 0 2px 4px rgba(255,255,255,0.4), inset 0 -4px 6px rgba(0,0,0,0.6);
+      cursor: pointer;
+      transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1);
+      border: 2px solid rgba(139, 30, 30, 0.8);
+      position: relative;
+    }
+    .wax-seal:hover { transform: scale(1.08) rotate(5deg); }
+
+    input, select, textarea {
+      background: rgba(255, 255, 255, 0.7);
+      border: 1px solid #c8b99c;
+      color: var(--text-dark);
+      font-family: 'Cormorant Garamond', serif;
+      font-size: 1.05rem;
+      padding: 10px 14px;
+      border-radius: 4px;
+      outline: none;
+      width: 100%;
+    }
+    input:focus, select:focus, textarea:focus {
+      border-color: var(--ruby-red);
+      background: #ffffff;
+      box-shadow: 0 0 0 3px rgba(139, 30, 30, 0.15);
+    }
+
+    .btn-gold {
+      background: linear-gradient(135deg, var(--gold-brass), var(--gold-deep));
+      color: #1a1204;
+      font-family: 'Cinzel', serif;
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.3);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-gold:hover { filter: brightness(1.1); }
+
+    .btn-ruby {
+      background: linear-gradient(135deg, var(--ruby-red), var(--ruby-dark));
+      color: var(--paper-cream);
+      font-family: 'Cinzel', serif;
+      font-weight: 700;
+      font-size: 0.85rem;
+      padding: 12px 24px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(0,0,0,0.4);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+    }
+    .btn-ruby:hover { filter: brightness(1.15); }
+
+    .btn-outline {
+      background: transparent;
+      border: 1px solid rgba(212, 175, 55, 0.4);
+      color: var(--gold-brass);
+      font-family: 'Cinzel', serif;
+      font-size: 0.8rem;
+      padding: 8px 16px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .btn-outline:hover { background: rgba(212, 175, 55, 0.1); }
+
+    .nav-tab {
+      background: transparent;
+      border: none;
+      color: rgba(246, 240, 228, 0.6);
+      font-family: 'Cinzel', serif;
+      font-size: 0.9rem;
+      padding: 12px 20px;
+      cursor: pointer;
+      border-bottom: 2px solid transparent;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .nav-tab:hover { color: var(--paper-cream); }
+    .nav-tab.active {
+      color: var(--gold-brass);
+      border-bottom-color: var(--gold-brass);
+      background: rgba(212, 175, 55, 0.05);
+    }
+
+    #snowCanvas {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 0; opacity: 0.4;
+    }
+    .hidden { display: none !important; }
+  </style>
+</head>
+<body>
+
+  <canvas id="snowCanvas"></canvas>
+
+  <div style="position: relative; z-index: 10; max-width: 1100px; margin: 0 auto; width: 100%; padding: 20px; flex: 1; display: flex; flex-direction: column;">
+
+    <header style="display: flex; flex-direction: column; align-items: center; text-align: center; margin-bottom: 24px; gap: 12px;">
+      <div style="display: flex; align-items: center; gap: 12px;">
+        <i data-lucide="sparkles" style="color: var(--gold-brass); width: 28px; height: 28px;"></i>
+        <h1 style="font-size: 2.2rem; color: var(--paper-cream); text-shadow: 0 2px 10px rgba(0,0,0,0.7);">L'Atelier Secret Santa</h1>
+        <i data-lucide="sparkles" style="color: var(--gold-brass); width: 28px; height: 28px;"></i>
+      </div>
+      <p style="font-style: italic; color: rgba(246, 240, 228, 0.7); max-width: 500px; font-size: 1.1rem;">Un tirage d'exception, scellé dans la tradition et la bienveillance.</p>
+
+      <nav style="display: flex; justify-content: center; gap: 10px; border-bottom: 1px solid rgba(212, 175, 55, 0.2); width: 100%; margin-top: 15px; flex-wrap: wrap;">
+        <button id="navPart2" class="nav-tab active" onclick="switchMainTab('part2')"><i data-lucide="mail"></i> Le Salon (Mon Tirage)</button>
+        <button id="navPart3" class="nav-tab" onclick="switchMainTab('part3')"><i data-lucide="gift"></i> La Soirée J (Distribution)</button>
+        <button id="navPart1" class="nav-tab" onclick="switchMainTab('part1')" style="margin-left: auto; color: rgba(246, 240, 228, 0.4);"><i data-lucide="lock"></i> Espace Organisateur</button>
+      </nav>
+    </header>
+
+    <main style="flex: 1; display: flex; flex-direction: column;">
+
+      <!-- PARTIE 1 : ADMIN -->
+      <section id="part1Section" class="hidden">
+        <div id="adminAuthLock" class="paper-card" style="max-width: 450px; margin: 40px auto; text-align: center;">
+          <div class="ribbon-tag" style="margin-bottom: 16px;">Accès Réservé</div>
+          <h2 style="font-size: 1.4rem; margin-bottom: 10px;">Code PIN Organisateur</h2>
+          <div style="display: flex; gap: 10px; justify-content: center; margin-bottom: 15px;">
+            <input type="password" id="adminPinInput" placeholder="Ex: 0000" style="max-width: 180px; text-align: center; font-size: 1.3rem; letter-spacing: 0.2em;">
+            <button class="btn-ruby" onclick="unlockAdmin()">Ouvrir</button>
+          </div>
+          <p id="adminPinError" style="color: var(--ruby-red); font-size: 0.9rem; display: none;">Code PIN incorrect.</p>
+        </div>
+
+        <div id="adminDashboard" class="hidden" style="display: flex; flex-direction: column; gap: 24px;">
+          <div style="display: flex; justify-content: space-between; align-items: center;">
+            <h2 style="color: var(--paper-cream); font-size: 1.6rem;">Configuration de l'Événement</h2>
+            <button class="btn-outline" onclick="lockAdmin()"><i data-lucide="log-out"></i> Verrouiller</button>
+          </div>
+
+          <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 20px;">
+            <div class="paper-card">
+              <h3 style="font-size: 1.2rem; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 16px;">Paramètres</h3>
+              <div style="display: flex; flex-direction: column; gap: 14px;">
+                <div>
+                  <label style="font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 4px;">Nom de l'Événement</label>
+                  <input type="text" id="cfgEventName" placeholder="Noël 2026">
+                </div>
+                <div>
+                  <label style="font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 4px;">Budget</label>
+                  <input type="text" id="cfgBudget" placeholder="20€ max">
+                </div>
+                <div>
+                  <label style="font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 4px;">Nouveau PIN Admin</label>
+                  <input type="password" id="cfgAdminPin" placeholder="Ex: 0000">
+                </div>
+                <button class="btn-gold" onclick="saveEventConfig()">Enregistrer</button>
+              </div>
+            </div>
+
+            <div class="paper-card">
+              <h3 style="font-size: 1.2rem; border-bottom: 1px solid #ddd; padding-bottom: 8px; margin-bottom: 16px;">Ajouter un Participant</h3>
+              <div style="display: flex; flex-direction: column; gap: 14px;">
+                <div>
+                  <label style="font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 4px;">Prénom</label>
+                  <input type="text" id="partName" placeholder="Ex: Élodie">
+                </div>
+                <div>
+                  <label style="font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 4px;">Code PIN (4 chiffres)</label>
+                  <input type="text" id="partPin" maxlength="4" placeholder="1234">
+                </div>
+                <div>
+                  <label style="font-weight: 600; font-size: 0.9rem; display: block; margin-bottom: 4px;">Exclusions</label>
+                  <select id="partExclusions" multiple style="height: 70px;"></select>
+                </div>
+                <button class="btn-ruby" onclick="addParticipant()">+ Ajouter</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="paper-card">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px;">
+              <h3 style="font-size: 1.3rem;">Inscrits (<span id="partCount">0</span>)</h3>
+              <button class="btn-ruby" onclick="triggerDraw()"><i data-lucide="sparkles"></i> Lancer le Tirage</button>
+            </div>
+            <div id="adminParticipantsList" style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;"></div>
+            <div style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 12px;">
+              <button class="btn-outline" onclick="toggleAdminViewResults()" id="btnToggleSecretView">Afficher les combinaisons</button>
+              <div id="adminSecretResults" class="hidden" style="background: #eef2ef; padding: 12px; margin-top: 10px; border-radius: 4px; font-size: 0.9rem;"></div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PARTIE 2 : SALON -->
+      <section id="part2Section" style="display: flex; flex-direction: column; align-items: center; gap: 20px;">
+        <div class="paper-card" style="max-width: 650px; width: 100%; text-align: center;">
+          <h2 style="font-size: 1.8rem; margin-bottom: 8px;" id="dispEventTitle">Secret Santa</h2>
+          <p style="color: #666; font-size: 1rem; margin-bottom: 16px;">Choisis ton prénom et entre ton PIN pour voir ta cible.</p>
+          <div style="display: flex; flex-direction: column; gap: 14px; max-width: 380px; margin: 0 auto;">
+            <select id="userSelect" onchange="onUserSelectedChange()" style="text-align: center; font-weight: 600;">
+              <option value="">-- Mon Prénom --</option>
+            </select>
+            <div id="userPinBlock" class="hidden" style="display: flex; flex-direction: column; gap: 8px;">
+              <input type="password" id="userPinInput" maxlength="4" placeholder="PIN (4 chiffres)" style="text-align: center; letter-spacing: 0.2em;">
+              <button class="btn-ruby" onclick="revealUserAssignment()"><i data-lucide="key"></i> Découvrir ma cible</button>
+            </div>
+          </div>
+        </div>
+
+        <div id="revealEnvelopeCard" class="hidden paper-card" style="max-width: 650px; width: 100%; text-align: center; position: relative;">
+          <div style="position: absolute; top: 15px; right: 15px;">
+            <button onclick="closeUserCard()" class="btn-outline" style="padding: 4px 10px; font-size: 0.75rem;">Fermer</button>
+          </div>
+          <span class="ribbon-tag" style="background: var(--gold-deep); margin-bottom: 10px;">Confidentiel</span>
+          <h3 style="font-size: 1.5rem; color: var(--ruby-red);" id="userGreeting">Bonjour !</h3>
+          <div style="margin: 20px 0; background: #ebdcb9; padding: 20px; border-radius: 4px; border: 1px dashed var(--gold-deep);">
+            <p style="font-size: 0.95rem; color: #555; text-transform: uppercase;">Tu offres un cadeau à :</p>
+            <div id="assignedTargetName" class="font-title" style="font-size: 2.2rem; color: var(--ruby-dark); font-weight: 900;">???</div>
+            <div id="assignedTargetWishlist" style="margin-top: 10px; font-size: 0.95rem; color: #444; font-style: italic;"></div>
+          </div>
+          <p style="font-size: 0.9rem; color: #666; margin-bottom: 16px;">Consigne : <span id="dispBudgetMsg" style="font-weight: 700;">20€ max</span></p>
+          <div style="border-top: 1px solid #ddd; text-align: left; padding-top: 14px;">
+            <h4 style="font-size: 1.1rem; margin-bottom: 8px; color: var(--ruby-red);"><i data-lucide="list"></i> Ma Liste de Souhaits</h4>
+            <div style="display: flex; flex-direction: column; gap: 8px;">
+              <input type="text" id="wish1" placeholder="Idée 1">
+              <input type="text" id="wish2" placeholder="Idée 2">
+              <input type="text" id="wish3" placeholder="Idée 3">
+              <button class="btn-gold" onclick="saveMyWishlist()" style="align-self: flex-end;">Enregistrer</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PARTIE 3 : SOIRÉE J -->
+      <section id="part3Section" class="hidden" style="display: flex; flex-direction: column; align-items: center; gap: 24px;">
+        <div class="paper-card" style="max-width: 750px; width: 100%; text-align: center;">
+          <h2 style="font-size: 1.8rem; margin-bottom: 6px;">La Distribution du Jour J</h2>
+          <p style="font-size: 1rem; color: #666;">Pique dans la hotte pour l'ordre de passage !</p>
+        </div>
+        <div style="display: flex; flex-direction: column; align-items: center; gap: 20px; width: 100%; max-width: 600px;">
+          <div id="sackContainer" style="cursor: pointer; text-align: center;" onclick="drawNextGiftTurn()">
+            <div class="wax-seal" style="width: 120px; height: 120px; margin: 0 auto; flex-direction: column; gap: 4px;">
+              <i data-lucide="gift" style="width: 34px; height: 34px;"></i>
+              <span style="font-size: 0.7rem; font-family: 'Cinzel'; font-weight: 700;">PIOCHER</span>
+            </div>
+            <p style="margin-top: 10px; font-family: 'Caveat'; font-size: 1.3rem; color: var(--gold-brass);">Clique pour tirer le prochain tour !</p>
+          </div>
+          <div id="turnRevealCard" class="paper-card hidden" style="width: 100%; text-align: center; border: 2px solid var(--gold-brass);">
+            <div class="ribbon-tag" id="turnStepNumber" style="margin-bottom: 12px;">Tour #1</div>
+            <div style="margin: 16px 0;">
+              <p style="font-size: 1rem; color: #555;">C'est au tour de :</p>
+              <h3 id="turnGiverName" class="font-title" style="font-size: 2rem; color: var(--ruby-red); margin: 4px 0;">---</h3>
+              <p style="font-size: 1rem; color: #555;">pour offrir à :</p>
+              <h3 id="turnReceiverName" class="font-title" style="font-size: 2rem; color: var(--gold-deep); margin: 4px 0;">---</h3>
+            </div>
+            <div style="background: rgba(212, 175, 55, 0.1); padding: 12px; border-radius: 4px;">
+              <p style="font-size: 0.9rem; font-weight: 600; margin-bottom: 6px;">Devine ton Secret Santa, <span id="guessReceiverSpan">...</span> !</p>
+              <button class="btn-outline" onclick="revealTurnSantaIdentity()" id="btnRevealSantaIdent">Révéler</button>
+              <div id="santaIdentityResult" class="hidden" style="margin-top: 8px; font-weight: 700; color: var(--ruby-red);"></div>
+            </div>
+          </div>
+          <div class="paper-card" style="width: 100%;">
+            <h4 style="font-size: 1rem; border-bottom: 1px solid #ddd; padding-bottom: 4px; margin-bottom: 8px;">Historique (<span id="historyCount">0</span> / <span id="historyTotal">0</span>)</h4>
+            <div id="turnsHistoryList" style="display: flex; flex-direction: column; gap: 4px; max-height: 180px; overflow-y: auto; font-size: 0.9rem;"></div>
+          </div>
+        </div>
+      </section>
+
+    </main>
+
+    <footer style="margin-top: 30px; text-align: center; border-top: 1px solid rgba(212, 175, 55, 0.15); color: rgba(246, 240, 228, 0.4); font-size: 0.8rem; padding-top: 10px;">
+      Secret Santa Authentique 🎄
+    </footer>
+  </div>
+
+  <script>
+    // Configuration Supabase (Remplace par tes valeurs)
+    const SUPABASE_URL = "https://smwgaxsdjlscvfkgdlvf.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtd2dheHNkamxzY3Zma2dkbHZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ0NDA1MjksImV4cCI6MjExMDAxNjUyOX0.yIRvCpO1-GBcyKyPo2y_uQ8cjBafXWUictZ3oK3aktk";
+    
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    let state = {
+      config: { eventName: "Secret Santa 2026", budget: "20€ maximum", adminPin: "0000" },
+      participants: [],
+      assignments: {},
+      partyTurns: [],
+      currentTurnIndex: 0
+    };
+
+    let isAdminUnlocked = false;
+
+    window.onload = async function() {
+      await loadState();
+      initSnow();
+      lucide.createIcons();
+      updateUI();
+
+      // Écoute en temps réel des changements dans Supabase (Realtime)
+      supabaseClient
+        .channel('public:santa_store')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'santa_store', filter: 'id=eq.1' }, payload => {
+          if (payload.new && payload.new.data) {
+            state = payload.new.data;
+            updateUI();
+          }
+        })
+        .subscribe();
+    };
+
+    async function loadState() {
+      try {
+        const { data, error } = await supabaseClient
+          .from('santa_store')
+          .select('data')
+          .eq('id', 1)
+          .single();
+        
+        if (data && data.data) {
+          state = data.data;
+        }
+      } catch(e) {
+        console.error("Erreur de chargement Supabase", e);
+      }
+    }
+
+    async function saveState() {
+      try {
+        const { error } = await supabaseClient
+          .from('santa_store')
+          .update({ data: state })
+          .eq('id', 1);
+
+        if (error) {
+          console.error("Erreur de sauvegarde Supabase:", error);
+          alert("Erreur lors de la synchronisation en temps réel.");
+        }
+      } catch(e) {
+        console.error("Erreur réseau Supabase:", e);
+      }
+    }
+
+    function switchMainTab(tabId) {
+      document.getElementById('part1Section').classList.add('hidden');
+      document.getElementById('part2Section').classList.add('hidden');
+      document.getElementById('part3Section').classList.add('hidden');
+
+      document.getElementById('navPart1').classList.remove('active');
+      document.getElementById('navPart2').classList.remove('active');
+      document.getElementById('navPart3').classList.remove('active');
+
+      if (tabId === 'part1') {
+        document.getElementById('part1Section').classList.remove('hidden');
+        document.getElementById('navPart1').classList.add('active');
+      } else if (tabId === 'part2') {
+        document.getElementById('part2Section').classList.remove('hidden');
+        document.getElementById('navPart2').classList.add('active');
+        populateUserDropdown();
+      } else if (tabId === 'part3') {
+        document.getElementById('part3Section').classList.remove('hidden');
+        document.getElementById('navPart3').classList.add('active');
+        initPartyTurns();
+      }
+    }
+
+    function unlockAdmin() {
+      const input = document.getElementById('adminPinInput').value;
+      if (input === state.config.adminPin) {
+        isAdminUnlocked = true;
+        document.getElementById('adminAuthLock').classList.add('hidden');
+        document.getElementById('adminDashboard').classList.remove('hidden');
+        document.getElementById('adminPinError').style.display = 'none';
+        renderAdminDashboard();
+      } else {
+        document.getElementById('adminPinError').style.display = 'block';
+      }
+    }
+
+    function lockAdmin() {
+      isAdminUnlocked = false;
+      document.getElementById('adminAuthLock').classList.remove('hidden');
+      document.getElementById('adminDashboard').classList.add('hidden');
+      document.getElementById('adminPinInput').value = '';
+    }
+
+    async function saveEventConfig() {
+      const name = document.getElementById('cfgEventName').value.trim();
+      const budget = document.getElementById('cfgBudget').value.trim();
+      const newPin = document.getElementById('cfgAdminPin').value.trim();
+
+      if (name) state.config.eventName = name;
+      if (budget) state.config.budget = budget;
+      if (newPin && newPin.length >= 4) state.config.adminPin = newPin;
+
+      await saveState();
+      alert("Paramètres enregistrés et synchronisés en temps réel !");
+      updateUI();
+    }
+
+    async function addParticipant() {
+      const name = document.getElementById('partName').value.trim();
+      const pin = document.getElementById('partPin').value.trim();
+      if (!name || pin.length !== 4) {
+        alert("Indique un prénom et un code PIN à 4 chiffres.");
+        return;
+      }
+      const exclusions = Array.from(document.getElementById('partExclusions').selectedOptions).map(o => o.value);
+      state.participants.push({
+        id: 'p_' + Date.now() + Math.random().toString(36).substr(2, 4),
+        name, pin, exclusions, wishlist: []
+      });
+      document.getElementById('partName').value = '';
+      document.getElementById('partPin').value = '';
+      await saveState();
+      renderAdminDashboard();
+    }
+
+    async function removeParticipant(id) {
+      if (confirm("Supprimer ce participant ?")) {
+        state.participants = state.participants.filter(p => p.id !== id);
+        state.participants.forEach(p => p.exclusions = p.exclusions.filter(exId => exId !== id));
+        await saveState();
+        renderAdminDashboard();
+      }
+    }
+
+    function renderAdminDashboard() {
+      document.getElementById('cfgEventName').value = state.config.eventName;
+      document.getElementById('cfgBudget').value = state.config.budget;
+      document.getElementById('partCount').innerText = state.participants.length;
+
+      const exclSelect = document.getElementById('partExclusions');
+      exclSelect.innerHTML = state.participants.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+
+      const listContainer = document.getElementById('adminParticipantsList');
+      if (state.participants.length === 0) {
+        listContainer.innerHTML = `<div style="text-align: center; color: #888; padding: 10px;">Aucun participant.</div>`;
+      } else {
+        listContainer.innerHTML = state.participants.map(p => `
+          <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.6); padding: 8px 12px; border-radius: 4px; border: 1px solid #e0d5c1;">
+            <div><strong>${escapeHtml(p.name)}</strong> <span style="font-size: 0.8rem; color: #666;">(PIN: ${p.pin})</span></div>
+            <button onclick="removeParticipant('${p.id}')" style="background: none; border: none; color: var(--ruby-red); cursor: pointer;"><i data-lucide="trash-2" style="width: 16px;"></i></button>
+          </div>
+        `).join('');
+      }
+      lucide.createIcons();
+    }
+
+    async function triggerDraw() {
+      if (state.participants.length < 3) {
+        alert("Il faut au moins 3 participants !");
+        return;
+      }
+      let success = false, attempts = 0, assignments = {};
+      while (!success && attempts < 500) {
+        attempts++;
+        let availableReceivers = [...state.participants];
+        assignments = {};
+        success = true;
+        for (let giver of state.participants) {
+          let candidates = availableReceivers.filter(r => r.id !== giver.id && !giver.exclusions.includes(r.id));
+          if (candidates.length === 0) { success = false; break; }
+          const chosen = candidates[Math.floor(Math.random() * candidates.length)];
+          assignments[giver.id] = chosen.id;
+          availableReceivers = availableReceivers.filter(r => r.id !== chosen.id);
+        }
+      }
+      if (!success) { alert("Impossible de satisfaire toutes les exclusions."); return; }
+      state.assignments = assignments;
+      state.partyTurns = [];
+      await saveState();
+      confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
+      alert("Tirage effectué et synchronisé en direct !");
+      renderAdminDashboard();
+    }
+
+    function toggleAdminViewResults() {
+      const container = document.getElementById('adminSecretResults');
+      const btn = document.getElementById('btnToggleSecretView');
+      if (container.classList.contains('hidden')) {
+        container.classList.remove('hidden');
+        btn.innerText = "Masquer";
+        container.innerHTML = Object.keys(state.assignments).length === 0 ? "<em>Pas encore de tirage.</em>" : 
+          state.participants.map(p => `${escapeHtml(p.name)} ➔ <strong>${escapeHtml(state.participants.find(x => x.id === state.assignments[p.id])?.name || '')}</strong>`).join('<br>');
+      } else {
+        container.classList.add('hidden');
+        btn.innerText = "Afficher les combinaisons";
+      }
+    }
+
+    function populateUserDropdown() {
+      const select = document.getElementById('userSelect');
+      const currentVal = select.value;
+      select.innerHTML = '<option value="">-- Mon Prénom --</option>' + 
+        state.participants.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+      select.value = currentVal;
+      document.getElementById('dispEventTitle').innerText = state.config.eventName;
+      document.getElementById('dispBudgetMsg').innerText = state.config.budget;
+    }
+
+    function onUserSelectedChange() {
+      document.getElementById('userPinBlock').classList.toggle('hidden', !document.getElementById('userSelect').value);
+      closeUserCard();
+    }
+
+    function revealUserAssignment() {
+      const userId = document.getElementById('userSelect').value;
+      const user = state.participants.find(p => p.id === userId);
+      if (!user || user.pin !== document.getElementById('userPinInput').value) {
+        alert("Code PIN incorrect !"); return;
+      }
+      const target = state.participants.find(p => p.id === state.assignments[userId]);
+      document.getElementById('userGreeting').innerText = `Bonjour ${user.name} !`;
+      document.getElementById('assignedTargetName').innerText = target ? target.name : '???';
+      document.getElementById('assignedTargetWishlist').innerHTML = target?.wishlist?.length ? `<strong>Idées :</strong> ${target.wishlist.map(escapeHtml).join(', ')}` : `<em>Pas encore de liste.</em>`;
+      document.getElementById('wish1').value = user.wishlist[0] || '';
+      document.getElementById('wish2').value = user.wishlist[1] || '';
+      document.getElementById('wish3').value = user.wishlist[2] || '';
+      document.getElementById('revealEnvelopeCard').classList.remove('hidden');
+      confetti({ particleCount: 40, spread: 60, origin: { y: 0.6 } });
+    }
+
+    async function saveMyWishlist() {
+      const user = state.participants.find(p => p.id === document.getElementById('userSelect').value);
+      if (!user) return;
+      user.wishlist = [document.getElementById('wish1').value.trim(), document.getElementById('wish2').value.trim(), document.getElementById('wish3').value.trim()].filter(Boolean);
+      await saveState();
+      alert("Souhaits enregistrés et mis à jour en direct pour ton Secret Santa !");
+    }
+
+    function closeUserCard() {
+      document.getElementById('revealEnvelopeCard').classList.add('hidden');
+      document.getElementById('userPinInput').value = '';
+    }
+
+    async function initPartyTurns() {
+      if (Object.keys(state.assignments).length === 0) return;
+      if (!state.partyTurns || state.partyTurns.length === 0) {
+        state.partyTurns = Object.keys(state.assignments).sort(() => Math.random() - 0.5);
+        state.currentTurnIndex = 0;
+        await saveState();
+      }
+      renderPartyTurnsUI();
+    }
+
+    async function drawNextGiftTurn() {
+      if (state.currentTurnIndex >= state.partyTurns.length) { alert("Tous les cadeaux ont été tirés !"); return; }
+      const giver = state.participants.find(p => p.id === state.partyTurns[state.currentTurnIndex]);
+      const receiver = state.participants.find(p => p.id === state.assignments[giver.id]);
+      document.getElementById('turnStepNumber').innerText = `Tour #${state.currentTurnIndex + 1}`;
+      document.getElementById('turnGiverName').innerText = giver.name;
+      document.getElementById('turnReceiverName').innerText = receiver.name;
+      document.getElementById('guessReceiverSpan').innerText = receiver.name;
+      document.getElementById('santaIdentityResult').classList.add('hidden');
+      document.getElementById('btnRevealSantaIdent').classList.remove('hidden');
+      document.getElementById('turnRevealCard').classList.remove('hidden');
+      state.currentTurnIndex++;
+      await saveState();
+      renderPartyTurnsUI();
+    }
+
+    function revealTurnSantaIdentity() {
+      const giver = state.participants.find(p => p.id === state.partyTurns[state.currentTurnIndex - 1]);
+      const res = document.getElementById('santaIdentityResult');
+      res.innerHTML = `🎁 Le Secret Santa était : <u>${escapeHtml(giver.name)}</u>`;
+      res.classList.remove('hidden');
+      document.getElementById('btnRevealSantaIdent').classList.add('hidden');
+    }
+
+    function renderPartyTurnsUI() {
+      document.getElementById('historyCount').innerText = state.currentTurnIndex;
+      document.getElementById('historyTotal').innerText = state.partyTurns.length;
+      const history = document.getElementById('turnsHistoryList');
+      history.innerHTML = state.currentTurnIndex === 0 ? '<em>Aucun cadeau tiré.</em>' :
+        state.partyTurns.slice(0, state.currentTurnIndex).map((gId, i) => {
+          const g = state.participants.find(p => p.id === gId);
+          const r = state.participants.find(p => p.id === state.assignments[gId]);
+          return `<div>Tour #${i+1} : ${escapeHtml(g?.name)} ➔ ${escapeHtml(r?.name)}</div>`;
+        }).reverse().join('');
+    }
+
+    function updateUI() {
+      renderAdminDashboard();
+      populateUserDropdown();
+      lucide.createIcons();
+    }
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+    }
+
+    function initSnow() {
+      const canvas = document.getElementById('snowCanvas');
+      const ctx = canvas.getContext('2d');
+      let w = canvas.width = window.innerWidth, h = canvas.height = window.innerHeight;
+      window.addEventListener('resize', () => { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; });
+      const flakes = Array.from({ length: 35 }, () => ({ x: Math.random() * w, y: Math.random() * h, r: Math.random() * 2 + 1, d: Math.random() * 0.8 + 0.3 }));
+      function draw() {
+        ctx.clearRect(0, 0, w, h);
+        flakes.forEach(f => {
+          ctx.beginPath(); ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+          ctx.fillStyle = `rgba(246, 240, 228, 0.5)`; ctx.fill();
+          f.y += f.d; if (f.y > h) f.y = -10;
+        });
+        requestAnimationFrame(draw);
+      }
+      draw();
+    }
+  </script>
+</body>
+</html>

@@ -11,7 +11,6 @@
   
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-  <!-- SDK Client Supabase -->
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
@@ -279,7 +278,7 @@
               <h3 style="font-size: 1.3rem;">Inscrits (<span id="partCount">0</span>)</h3>
               <button class="btn-ruby" onclick="triggerDraw()"><i data-lucide="sparkles"></i> Lancer le Tirage</button>
             </div>
-            <div id="adminParticipantsList" style="display: flex; flex-direction: column; gap: 10px; max-height: 300px; overflow-y: auto;"></div>
+            <div id="adminParticipantsList" style="display: flex; flex-direction: column; gap: 10px; max-height: 400px; overflow-y: auto;"></div>
             <div style="margin-top: 20px; border-top: 1px solid #ddd; padding-top: 12px;">
               <button class="btn-outline" onclick="toggleAdminViewResults()" id="btnToggleSecretView">Afficher les combinaisons</button>
               <div id="adminSecretResults" class="hidden" style="background: #eef2ef; padding: 12px; margin-top: 10px; border-radius: 4px; font-size: 0.9rem;"></div>
@@ -371,9 +370,8 @@
   </div>
 
   <script>
-    // Configuration Supabase (Remplace par tes valeurs)
     const SUPABASE_URL = "https://smwgaxsdjlscvfkgdlvf.supabase.co";
-    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtd2dheHNkamxzY3Zma2dkbHZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ0NDA1MjksImV4cCI6MjExMDAxNjUyOX0.yIRvCpO1-GBcyKyPo2y_uQ8cjBafXWUictZ3oK3aktk";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtd2dheHNkamxzY3Zma2dkbHZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzA5ODc5NDYsImV4cCI6MjA4NjU2Mzk0Nn0.T9H9L4sU9sS9L8sQ9..."; // Mets bien ta clé anon public complète ici
     
     const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
@@ -393,7 +391,6 @@
       lucide.createIcons();
       updateUI();
 
-      // Écoute en temps réel des changements dans Supabase (Realtime)
       supabaseClient
         .channel('public:santa_store')
         .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'santa_store', filter: 'id=eq.1' }, payload => {
@@ -430,7 +427,6 @@
 
         if (error) {
           console.error("Erreur de sauvegarde Supabase:", error);
-          alert("Erreur lors de la synchronisation en temps réel.");
         }
       } catch(e) {
         console.error("Erreur réseau Supabase:", e);
@@ -490,7 +486,7 @@
       if (newPin && newPin.length >= 4) state.config.adminPin = newPin;
 
       await saveState();
-      alert("Paramètres enregistrés et synchronisés en temps réel !");
+      alert("Paramètres enregistrés !");
       updateUI();
     }
 
@@ -521,6 +517,33 @@
       }
     }
 
+    function toggleEditParticipant(id) {
+      const editDiv = document.getElementById(`edit_box_${id}`);
+      editDiv.classList.toggle('hidden');
+    }
+
+    async function saveEditParticipant(id) {
+      const p = state.participants.find(item => item.id === id);
+      if (!p) return;
+
+      const newName = document.getElementById(`edit_name_${id}`).value.trim();
+      const newPin = document.getElementById(`edit_pin_${id}`).value.trim();
+      const newExcl = Array.from(document.getElementById(`edit_excl_${id}`).selectedOptions).map(o => o.value);
+
+      if (!newName || newPin.length !== 4) {
+        alert("Le prénom et le PIN à 4 chiffres sont obligatoires.");
+        return;
+      }
+
+      p.name = newName;
+      p.pin = newPin;
+      p.exclusions = newExcl;
+
+      await saveState();
+      renderAdminDashboard();
+      alert("Modifications enregistrées !");
+    }
+
     function renderAdminDashboard() {
       document.getElementById('cfgEventName').value = state.config.eventName;
       document.getElementById('cfgBudget').value = state.config.budget;
@@ -533,12 +556,39 @@
       if (state.participants.length === 0) {
         listContainer.innerHTML = `<div style="text-align: center; color: #888; padding: 10px;">Aucun participant.</div>`;
       } else {
-        listContainer.innerHTML = state.participants.map(p => `
-          <div style="display: flex; justify-content: space-between; align-items: center; background: rgba(255,255,255,0.6); padding: 8px 12px; border-radius: 4px; border: 1px solid #e0d5c1;">
-            <div><strong>${escapeHtml(p.name)}</strong> <span style="font-size: 0.8rem; color: #666;">(PIN: ${p.pin})</span></div>
-            <button onclick="removeParticipant('${p.id}')" style="background: none; border: none; color: var(--ruby-red); cursor: pointer;"><i data-lucide="trash-2" style="width: 16px;"></i></button>
-          </div>
-        `).join('');
+        listContainer.innerHTML = state.participants.map(p => {
+          const optionsHtml = state.participants
+            .filter(other => other.id !== p.id)
+            .map(other => `<option value="${other.id}" ${p.exclusions.includes(other.id) ? 'selected' : ''}>${escapeHtml(other.name)}</option>`)
+            .join('');
+
+          return `
+            <div style="background: rgba(255,255,255,0.7); padding: 10px 14px; border-radius: 4px; border: 1px solid #e0d5c1; display: flex; flex-direction: column; gap: 8px;">
+              <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div><strong>${escapeHtml(p.name)}</strong> <span style="font-size: 0.8rem; color: #666;">(PIN: ${p.pin})</span></div>
+                <div style="display: flex; gap: 6px;">
+                  <button onclick="toggleEditParticipant('${p.id}')" style="background: none; border: none; color: var(--gold-deep); cursor: pointer;" title="Modifier"><i data-lucide="edit-3" style="width: 16px;"></i></button>
+                  <button onclick="removeParticipant('${p.id}')" style="background: none; border: none; color: var(--ruby-red); cursor: pointer;" title="Supprimer"><i data-lucide="trash-2" style="width: 16px;"></i></button>
+                </div>
+              </div>
+
+              <!-- Bloc d'édition caché par défaut -->
+              <div id="edit_box_${p.id}" class="hidden" style="border-top: 1px dashed #c8b99c; padding-top: 8px; margin-top: 4px; display: flex; flex-direction: column; gap: 8px;">
+                <div style="display: flex; gap: 8px;">
+                  <input type="text" id="edit_name_${p.id}" value="${escapeHtml(p.name)}" placeholder="Prénom" style="flex: 2;">
+                  <input type="text" id="edit_pin_${p.id}" value="${p.pin}" maxlength="4" placeholder="PIN" style="flex: 1; text-align: center;">
+                </div>
+                <div>
+                  <label style="font-size: 0.8rem; font-weight: 600; display: block; margin-bottom: 2px;">Exclusions :</label>
+                  <select id="edit_excl_${p.id}" multiple style="height: 55px; font-size: 0.9rem;">
+                    ${optionsHtml}
+                  </select>
+                </div>
+                <button class="btn-gold" onclick="saveEditParticipant('${p.id}')" style="padding: 6px; font-size: 0.75rem; align-self: flex-end;">Valider les modifications</button>
+              </div>
+            </div>
+          `;
+        }).join('');
       }
       lucide.createIcons();
     }
