@@ -11,6 +11,8 @@
   
   <script src="https://unpkg.com/lucide@latest"></script>
   <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+  <!-- SDK Client Supabase -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
   <style>
     :root {
@@ -369,6 +371,12 @@
   </div>
 
   <script>
+    // Configuration Supabase (Remplace par tes valeurs)
+    const SUPABASE_URL = "https://smwgaxsdjlscvfkgdlvf.supabase.co";
+    const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InNtd2dheHNkamxzY3Zma2dkbHZmIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTQ0NDA1MjksImV4cCI6MjExMDAxNjUyOX0.yIRvCpO1-GBcyKyPo2y_uQ8cjBafXWUictZ3oK3aktk";
+    
+    const supabaseClient = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
     let state = {
       config: { eventName: "Secret Santa 2026", budget: "20€ maximum", adminPin: "0000" },
       participants: [],
@@ -384,39 +392,49 @@
       initSnow();
       lucide.createIcons();
       updateUI();
+
+      // Écoute en temps réel des changements dans Supabase (Realtime)
+      supabaseClient
+        .channel('public:santa_store')
+        .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'santa_store', filter: 'id=eq.1' }, payload => {
+          if (payload.new && payload.new.data) {
+            state = payload.new.data;
+            updateUI();
+          }
+        })
+        .subscribe();
     };
 
     async function loadState() {
       try {
-        const response = await fetch('./secretsanta.json?t=' + Date.now());
-        if (response.ok) {
-          const data = await response.json();
-          if (data && typeof data === 'object' && data.config) {
-            state = data;
-            return;
-          }
+        const { data, error } = await supabaseClient
+          .from('santa_store')
+          .select('data')
+          .eq('id', 1)
+          .single();
+        
+        if (data && data.data) {
+          state = data.data;
         }
       } catch(e) {
-        console.error("Impossible de charger le JSON local", e);
-      }
-      
-      const saved = localStorage.getItem('secret_santa_fallback_state');
-      if (saved) {
-        try { state = JSON.parse(saved); } catch(e) {}
+        console.error("Erreur de chargement Supabase", e);
       }
     }
 
-    function saveState() {
-      localStorage.setItem('secret_santa_fallback_state', JSON.stringify(state));
-      
-      // Téléchargement automatique d'un nouveau JSON mis à jour pour que tu puisses le replacer sur ton repo si besoin
-      const dataStr = "data:text/json;charset=utf-8," + encodeURIComponent(JSON.stringify(state, null, 2));
-      const downloadAnchor = document.createElement('a');
-      downloadAnchor.setAttribute("href", dataStr);
-      downloadAnchor.setAttribute("download", "secretsanta.json");
-      document.body.appendChild(downloadAnchor);
-      downloadAnchor.click();
-      downloadAnchor.remove();
+    async function saveState() {
+      try {
+        const { error } = await supabaseClient
+          .from('santa_store')
+          .update({ data: state })
+          .eq('id', 1);
+
+        if (error) {
+          console.error("Erreur de sauvegarde Supabase:", error);
+          alert("Erreur lors de la synchronisation en temps réel.");
+        }
+      } catch(e) {
+        console.error("Erreur réseau Supabase:", e);
+      }
     }
 
     function switchMainTab(tabId) {
@@ -462,7 +480,7 @@
       document.getElementById('adminPinInput').value = '';
     }
 
-    function saveEventConfig() {
+    async function saveEventConfig() {
       const name = document.getElementById('cfgEventName').value.trim();
       const budget = document.getElementById('cfgBudget').value.trim();
       const newPin = document.getElementById('cfgAdminPin').value.trim();
@@ -471,12 +489,12 @@
       if (budget) state.config.budget = budget;
       if (newPin && newPin.length >= 4) state.config.adminPin = newPin;
 
-      saveState();
-      alert("Paramètres enregistrés ! Un fichier secretsanta.json s'est téléchargé : remplace-le dans ton dossier de projet.");
+      await saveState();
+      alert("Paramètres enregistrés et synchronisés en temps réel !");
       updateUI();
     }
 
-    function addParticipant() {
+    async function addParticipant() {
       const name = document.getElementById('partName').value.trim();
       const pin = document.getElementById('partPin').value.trim();
       if (!name || pin.length !== 4) {
@@ -490,15 +508,15 @@
       });
       document.getElementById('partName').value = '';
       document.getElementById('partPin').value = '';
-      saveState();
+      await saveState();
       renderAdminDashboard();
     }
 
-    function removeParticipant(id) {
+    async function removeParticipant(id) {
       if (confirm("Supprimer ce participant ?")) {
         state.participants = state.participants.filter(p => p.id !== id);
         state.participants.forEach(p => p.exclusions = p.exclusions.filter(exId => exId !== id));
-        saveState();
+        await saveState();
         renderAdminDashboard();
       }
     }
@@ -525,7 +543,7 @@
       lucide.createIcons();
     }
 
-    function triggerDraw() {
+    async function triggerDraw() {
       if (state.participants.length < 3) {
         alert("Il faut au moins 3 participants !");
         return;
@@ -547,9 +565,9 @@
       if (!success) { alert("Impossible de satisfaire toutes les exclusions."); return; }
       state.assignments = assignments;
       state.partyTurns = [];
-      saveState();
+      await saveState();
       confetti({ particleCount: 60, spread: 70, origin: { y: 0.6 } });
-      alert("Tirage effectué ! Un fichier secretsanta.json s'est téléchargé. Pense à le committer sur ton repo.");
+      alert("Tirage effectué et synchronisé en direct !");
       renderAdminDashboard();
     }
 
@@ -569,8 +587,10 @@
 
     function populateUserDropdown() {
       const select = document.getElementById('userSelect');
+      const currentVal = select.value;
       select.innerHTML = '<option value="">-- Mon Prénom --</option>' + 
         state.participants.map(p => `<option value="${p.id}">${escapeHtml(p.name)}</option>`).join('');
+      select.value = currentVal;
       document.getElementById('dispEventTitle').innerText = state.config.eventName;
       document.getElementById('dispBudgetMsg').innerText = state.config.budget;
     }
@@ -597,12 +617,12 @@
       confetti({ particleCount: 40, spread: 60, origin: { y: 0.6 } });
     }
 
-    function saveMyWishlist() {
+    async function saveMyWishlist() {
       const user = state.participants.find(p => p.id === document.getElementById('userSelect').value);
       if (!user) return;
       user.wishlist = [document.getElementById('wish1').value.trim(), document.getElementById('wish2').value.trim(), document.getElementById('wish3').value.trim()].filter(Boolean);
-      saveState();
-      alert("Souhaits enregistrés ! Un fichier secretsanta.json s'est téléchargé pour la mise à jour.");
+      await saveState();
+      alert("Souhaits enregistrés et mis à jour en direct pour ton Secret Santa !");
     }
 
     function closeUserCard() {
@@ -610,17 +630,17 @@
       document.getElementById('userPinInput').value = '';
     }
 
-    function initPartyTurns() {
+    async function initPartyTurns() {
       if (Object.keys(state.assignments).length === 0) return;
       if (!state.partyTurns || state.partyTurns.length === 0) {
         state.partyTurns = Object.keys(state.assignments).sort(() => Math.random() - 0.5);
         state.currentTurnIndex = 0;
-        saveState();
+        await saveState();
       }
       renderPartyTurnsUI();
     }
 
-    function drawNextGiftTurn() {
+    async function drawNextGiftTurn() {
       if (state.currentTurnIndex >= state.partyTurns.length) { alert("Tous les cadeaux ont été tirés !"); return; }
       const giver = state.participants.find(p => p.id === state.partyTurns[state.currentTurnIndex]);
       const receiver = state.participants.find(p => p.id === state.assignments[giver.id]);
@@ -632,7 +652,7 @@
       document.getElementById('btnRevealSantaIdent').classList.remove('hidden');
       document.getElementById('turnRevealCard').classList.remove('hidden');
       state.currentTurnIndex++;
-      saveState();
+      await saveState();
       renderPartyTurnsUI();
     }
 
